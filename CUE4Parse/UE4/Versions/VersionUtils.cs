@@ -23,6 +23,8 @@ public static class VersionUtils
         if (packageSummary is { bUnversioned: false, CustomVersionContainer: not null })
         {
             var packageCustomVersion = packageSummary.CustomVersionContainer.GetVersion(key);
+            if (packageCustomVersion == -1 && Ar is FAssetArchive { IsFilterEditorOnly: false })
+                return 0;
             return packageCustomVersion; // proceed so we can guess version from engine version
         }
 

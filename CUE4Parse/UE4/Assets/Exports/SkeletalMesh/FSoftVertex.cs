@@ -30,7 +30,7 @@ public class FSoftVertex : FSkelMeshVertexBase
         var bUse16BitBoneWeight = FUE5MainStreamObjectVersion.Get(Ar) >= FUE5MainStreamObjectVersion.Type.IncreasedSkinWeightPrecision;
 
         Infs = !isRigid ?
-            new FSkinWeightInfo(Ar, len > FSkinWeightInfo.NUM_INFLUENCES_UE4, true, bUse16BitBoneWeight, len) :
+            new FSkinWeightInfo(Ar, len > FSkinWeightInfo.NUM_INFLUENCES_UE4, FAnimObjectVersion.Get(Ar) >= FAnimObjectVersion.Type.IncreaseBoneIndexLimitPerChunk, bUse16BitBoneWeight, len) :
             new FSkinWeightInfo { BoneIndex = { [0] = Ar.Read<byte>() }, BoneWeight = { [0] = 255 } };
     }
 }
