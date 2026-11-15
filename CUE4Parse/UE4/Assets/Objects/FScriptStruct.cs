@@ -165,7 +165,7 @@ public class FScriptStruct
             "Rotator" => type == ReadType.ZERO ? new FRotator() : new FRotator(Ar),
             "Rotator3f" => type == ReadType.ZERO ? new FRotator() : new FRotator(Ar.Read<float>(), Ar.Read<float>(), Ar.Read<float>()),
             "Rotator3d" => type == ReadType.ZERO ? new FRotator() : new FRotator(Ar.Read<double>(), Ar.Read<double>(), Ar.Read<double>()),
-            "RawAnimSequenceTrack" => new FRawAnimSequenceTrack(Ar),
+            "RawAnimSequenceTrack" => FRawAnimSequenceTrack.IsTagged(Ar) ? new FRawAnimSequenceTrack(new FStructFallback(Ar, structName)) : new FRawAnimSequenceTrack(Ar),
             "Spline" => type == ReadType.ZERO ? new FSpline() : new FSpline(Ar),
             "Sphere" => type == ReadType.ZERO ? new FSphere() : new FSphere(Ar),
             "Sphere3f" => type == ReadType.ZERO ? new FSphere() : new FSphere(Ar.Read<TIntVector3<float>>(), Ar.Read<float>()),
