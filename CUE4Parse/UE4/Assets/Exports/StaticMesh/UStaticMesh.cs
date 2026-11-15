@@ -1,5 +1,6 @@
 using CUE4Parse.GameTypes.DeadIsland2.Assets.Objects;
 using CUE4Parse.GameTypes.DFHO.Assets.Objects;
+using CUE4Parse.UE4.Assets.Objects;
 using CUE4Parse.UE4.Assets.Readers;
 using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.Core.Misc;
@@ -18,6 +19,7 @@ public class UStaticMesh : UObject
     public FPackageIndex NavCollision { get; private set; }
     public FGuid LightingGuid { get; private set; }
     public FPackageIndex[]? Sockets { get; private set; } // UStaticMeshSocket[]
+    public FMeshDescriptionBulkData[] SourceMeshDescriptions = [];
     public FStaticMeshRenderData? RenderData { get; private set; }
     public FPackageIndex?[] Materials { get; private set; } = []; // UMaterialInterface[]
     public FStaticMaterial[] StaticMaterials { get; private set; } = [];
@@ -181,6 +183,28 @@ public class UStaticMesh : UObject
         if (Ar.Ver > EUnrealEngineObjectUE4Version.STATIC_MESH_SOCKETS)
         {
             Sockets = Ar.ReadArray(() => new FPackageIndex(Ar));
+        }
+
+        if (!Ar.IsFilterEditorOnly && Ar.Game >= GAME_UE4_0 && !stripDataFlags.IsEditorDataStripped())
+        {
+            try
+            {
+                var models = TryGetValue(out FStructFallback[] sourceModels, "SourceModels") ? sourceModels.Length : 0;
+                var list = new List<FMeshDescriptionBulkData>();
+                for (var i = 0; i < models; i++)
+                {
+                    if (Ar.Ver<FEditorObjectVersion.Type>(FEditorObjectVersion.GUID) < FEditorObjectVersion.Type.StaticMeshDeprecatedRawMesh)
+                        list.Add(new FMeshDescriptionBulkData(Ar, rawMesh: true));
+                    else if (Ar.Ver<FUE5MainStreamObjectVersion.Type>(FUE5MainStreamObjectVersion.GUID) < FUE5MainStreamObjectVersion.Type.SerializeMeshDescriptionBase && Ar.ReadBoolean())
+                        list.Add(new FMeshDescriptionBulkData(Ar));
+                }
+
+                SourceMeshDescriptions = list.ToArray();
+            }
+            catch (Exception e)
+            {
+                Log.Warning(e, "Could not read the source models of {0}", Name);
+            }
         }
 
         if (!Ar.IsFilterEditorOnly || Ar.Game < GAME_UE4_0)

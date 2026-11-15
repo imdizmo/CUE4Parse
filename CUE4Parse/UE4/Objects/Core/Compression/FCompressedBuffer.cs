@@ -1,4 +1,7 @@
-﻿using CUE4Parse.UE4.Readers;
+﻿using System;
+using System.Buffers.Binary;
+using CUE4Parse.Compression;
+using CUE4Parse.UE4.Readers;
 
 namespace CUE4Parse.UE4.Objects.Core.Compression;
 
@@ -29,5 +32,41 @@ public class FCompressedBuffer
         {
             Data = [];
         }
+    }
+
+    public byte[] Decompress()
+    {
+        if (Header.Magic != FCompressedBufferHeader.ExpectedMagic || Header.TotalRawSize > int.MaxValue)
+            return [];
+        var raw = new byte[Header.TotalRawSize];
+        if (Header.Method == FCompressedBufferHeader.EMethod.None)
+        {
+            Data.AsSpan(0, raw.Length).CopyTo(raw);
+            return raw;
+        }
+
+        var method = Header.Method switch
+        {
+            FCompressedBufferHeader.EMethod.Oodle => CompressionMethod.Oodle,
+            FCompressedBufferHeader.EMethod.LZ4 => CompressionMethod.LZ4,
+            _ => throw new NotSupportedException($"FCompressedBuffer method {Header.Method}"),
+        };
+        var blocks = (int) Header.BlockCount;
+        var blockSize = 1L << Header.BlockSizeExponent;
+        var position = 4 * blocks;
+        long written = 0;
+        for (var i = 0; i < blocks; i++)
+        {
+            var compressed = (int) BinaryPrimitives.ReadUInt32BigEndian(Data.AsSpan(4 * i));
+            var size = (int) System.Math.Min(blockSize, raw.LongLength - written);
+            if (compressed == size)
+                Data.AsSpan(position, size).CopyTo(raw.AsSpan((int) written));
+            else
+                CUE4Parse.Compression.Compression.Decompress(Data.AsSpan(position, compressed), raw.AsSpan((int) written, size), method);
+            position += compressed;
+            written += size;
+        }
+
+        return raw;
     }
 }

@@ -1,3 +1,4 @@
+using System;
 using System.Runtime.CompilerServices;
 using CUE4Parse.UE4.Assets.Readers;
 using CUE4Parse.UE4.Objects.Core.Misc;
@@ -27,4 +28,7 @@ public static class VersionUtils
 
         return -1; // Determine by game
     }
+
+    public static T Ver<T>(this FArchive Ar, FGuid key) where T : struct, Enum =>
+        (T) Enum.ToObject(typeof(T), Math.Max(0, Ar.CustomVer(key)));
 }

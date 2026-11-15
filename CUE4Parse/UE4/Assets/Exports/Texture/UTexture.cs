@@ -83,9 +83,10 @@ public class UTexture : UUnrealMaterial, IAssetUserData
         // If archive is has editor only data
         if (!stripFlags.IsEditorDataStripped())
         {
-            if (FUE5MainStreamObjectVersion.Get(Ar) < FUE5MainStreamObjectVersion.Type.VirtualizedBulkDataHaveUniqueGuids)
+            var ue5 = Ar.Ver<FUE5MainStreamObjectVersion.Type>(FUE5MainStreamObjectVersion.GUID);
+            if (ue5 < FUE5MainStreamObjectVersion.Type.VirtualizedBulkDataHaveUniqueGuids)
             {
-                if (FUE5MainStreamObjectVersion.Get(Ar) < FUE5MainStreamObjectVersion.Type.TextureSourceVirtualization)
+                if (ue5 < FUE5MainStreamObjectVersion.Type.TextureSourceVirtualization)
                 {
                     SourceArt = new FByteBulkData(Ar);
                 }
