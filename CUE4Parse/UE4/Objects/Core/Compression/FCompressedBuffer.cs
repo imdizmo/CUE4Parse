@@ -36,14 +36,16 @@ public class FCompressedBuffer
 
     public byte[] Decompress()
     {
-        if (Header.Magic != FCompressedBufferHeader.ExpectedMagic || Header.TotalRawSize > int.MaxValue)
+        const ulong MaxRawSize = 1UL << 30;
+        if (Header.Magic != FCompressedBufferHeader.ExpectedMagic || Header.TotalRawSize > MaxRawSize)
+            return [];
+        if (Header.Method == FCompressedBufferHeader.EMethod.None)
+            return Header.TotalRawSize <= (ulong) Data.Length ? Data[..(int) Header.TotalRawSize] : [];
+        if (Header.BlockSizeExponent > 30 || Header.BlockCount == 0 ||
+            (ulong) Header.BlockCount * 4 > (ulong) Data.Length ||
+            Header.TotalRawSize > (ulong) Header.BlockCount << Header.BlockSizeExponent)
             return [];
         var raw = new byte[Header.TotalRawSize];
-        if (Header.Method == FCompressedBufferHeader.EMethod.None)
-        {
-            Data.AsSpan(0, raw.Length).CopyTo(raw);
-            return raw;
-        }
 
         var method = Header.Method switch
         {
@@ -57,13 +59,15 @@ public class FCompressedBuffer
         long written = 0;
         for (var i = 0; i < blocks; i++)
         {
-            var compressed = (int) BinaryPrimitives.ReadUInt32BigEndian(Data.AsSpan(4 * i));
+            var compressed = BinaryPrimitives.ReadUInt32BigEndian(Data.AsSpan(4 * i));
             var size = (int) System.Math.Min(blockSize, raw.LongLength - written);
+            if (size <= 0 || compressed > (uint) (Data.Length - position))
+                return [];
             if (compressed == size)
                 Data.AsSpan(position, size).CopyTo(raw.AsSpan((int) written));
             else
-                CUE4Parse.Compression.Compression.Decompress(Data.AsSpan(position, compressed), raw.AsSpan((int) written, size), method);
-            position += compressed;
+                CUE4Parse.Compression.Compression.Decompress(Data.AsSpan(position, (int) compressed), raw.AsSpan((int) written, size), method);
+            position += (int) compressed;
             written += size;
         }
 

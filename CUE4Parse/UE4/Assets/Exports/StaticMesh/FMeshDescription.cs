@@ -20,7 +20,7 @@ public class FMeshDescription
     public int[] TriangleGroups = [];
     public string[] GroupMaterialSlots = [];
 
-    private const int MaxElements = 1 << 26;
+    private const int MaxElements = 1 << 24;
 
     private enum EType : uint { Vector4f, Vector3f, Vector2f, Float, Int32, Bool, Name, Transform }
 
@@ -59,6 +59,8 @@ public class FMeshDescription
         }
 
         var faces = Math.Min(faceMaterials.Length, wedges.Length / 3);
+        if (faceMaterials.Any(m => m < 0 || m >= 4096))
+            throw new ParserException(Ar, "Mesh description: bad face material index");
         var groups = faceMaterials.Length == 0 ? 0 : faceMaterials.Max() + 1;
         return new FMeshDescription
         {
@@ -84,16 +86,19 @@ public class FMeshDescription
             ReadLegacy(Ar);
     }
 
-    private static int Count(FArchive Ar)
+    private static int Count(FArchive Ar, int minSize = 1)
     {
         var n = Ar.Read<int>();
-        if (n < 0 || n > MaxElements) throw new ParserException(Ar, $"Mesh description: bad count {n}");
+        if (n < 0 || n > MaxElements || (long) n * minSize > Ar.Length - Ar.Position)
+            throw new ParserException(Ar, $"Mesh description: bad count {n}");
         return n;
     }
 
     private static bool[] BitArray(FArchive Ar)
     {
-        var bits = Count(Ar);
+        var bits = Ar.Read<int>();
+        if (bits < 0 || bits > MaxElements || (bits + 31L) / 32 * 4 > Ar.Length - Ar.Position)
+            throw new ParserException(Ar, $"Mesh description: bad bit count {bits}");
         var words = Ar.ReadArray<uint>((bits + 31) / 32);
         var result = new bool[bits];
         for (var i = 0; i < bits; i++) result[i] = (words[i >> 5] & (1u << (i & 31))) != 0;
@@ -173,9 +178,9 @@ public class FMeshDescription
 
     private static string[] CompactNames(FArchive Ar)
     {
-        var num = Count(Ar);
+        var num = Count(Ar, 0);
         if (num == 0) return [];
-        var unique = new string[Count(Ar)];
+        var unique = new string[Count(Ar, 4)];
         for (var i = 0; i < unique.Length; i++) unique[i] = Ar.ReadFString();
         if (unique.Length == 1) return Enumerable.Repeat(unique[0], num).ToArray();
         if (unique.Length == num) return unique;
