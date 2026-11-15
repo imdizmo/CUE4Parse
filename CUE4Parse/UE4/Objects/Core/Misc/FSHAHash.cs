@@ -55,7 +55,7 @@ public readonly struct FSHAHash : IUStruct, IEquatable<FSHAHash>
     public bool IsValid()
     {
         ReadOnlySpan<byte> span = Hash;
-        return span.IndexOfAnyExcept((byte) 0) < 0;
+        return span.IndexOfAnyExcept((byte) 0) >= 0;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

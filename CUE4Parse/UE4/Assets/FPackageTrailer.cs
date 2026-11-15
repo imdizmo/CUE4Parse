@@ -34,7 +34,7 @@ public class FPackageTrailer
 
         foreach (var entry in Header.PayloadLookupTable)
         {
-            if (entry.Identifier.Equals(id.Hash))
+            if (entry.Identifier.Equals(id))
             {
                 return entry.AccessMode switch
                 {
