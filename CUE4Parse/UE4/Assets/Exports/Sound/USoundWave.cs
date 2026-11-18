@@ -14,6 +14,7 @@ public class USoundWave : USoundBase
     public bool bStreaming { get; private set; } = true;
     public FFormatContainer? CompressedFormatData { get; private set; }
     public FByteBulkData? RawData { get; private set; }
+    public FEditorBulkData? EditorRawData { get; private set; }
     public FGuid CompressedDataGuid { get; private set; }
     public FStreamedAudioPlatformData? RunningPlatformData { get; private set; }
     public FStructFallback[]? PlatformCuePoints;
@@ -64,6 +65,18 @@ public class USoundWave : USoundBase
 
         void SerializePlatformData(FAssetArchive Ar, bool bCooked)
         {
+            // an editor (uncooked) package keeps the imported audio whether or not the sound streams: UE4 as bulk data,
+            // UE5 as editor bulk data (often in the package trailer)
+            if (!bCooked && bStreaming)
+            {
+                if (Ar.Game >= EGame.GAME_UE5_0)
+                    EditorRawData = new FEditorBulkData(Ar);
+                else
+                    RawData = new FByteBulkData(Ar);
+                CompressedDataGuid = Ar.Read<FGuid>();
+                return;
+            }
+
             if (!bStreaming)
             {
                 if (bCooked)
